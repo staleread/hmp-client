@@ -9,7 +9,7 @@ from . import dto
 
 
 def list_submissions(session: ApiSession) -> Result[list[dto.SubmissionResponse], str]:
-    response = session.get("/submission")
+    response = session.get("/submission/")
     result = api_utils.check_response(response)
 
     return result.map(
@@ -28,7 +28,7 @@ def upload_submission(
     cbor_bytes = cbor2.dumps(payload)
 
     response = session.post(
-        "/submission",
+        "/submission/",
         headers={"Content-Type": "application/cbor"},
         data=cbor_bytes,
     )
