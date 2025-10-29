@@ -25,5 +25,5 @@ class PdfToAudioRequest(BaseModel):
 
 
 class PdfToAudioResponse(BaseModel):
-    encrypted_audio: str
-    encrypted_audio_key: str
+    encrypted_audio: bytes
+    encrypted_audio_key: bytes

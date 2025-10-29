@@ -106,7 +106,7 @@ def execute_pdf_to_audio(
             },
             data=cbor_bytes,
         )
-        result = api_utils.check_response(response)
+        result = api_utils.check_response(response, cbor_data=True)
         return result.map(
             lambda data: TypeAdapter(dto.PdfToAudioResponse).validate_python(data)
         )

@@ -165,7 +165,7 @@ def convert_submission_to_audio(
         upload_key_response = upload_key_result.unwrap()
 
         aes_key = submission_crypto.decrypt_aes_key_with_private_key(
-            upload_key_response.encrypted_aes_key, private_key_bytes
+            base64.b64decode(upload_key_response.encrypted_aes_key), private_key_bytes
         )
 
         with open(pdf_file_path, "rb") as f:

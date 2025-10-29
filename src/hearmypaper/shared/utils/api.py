@@ -1,16 +1,18 @@
+import cbor2
 import requests
 from result import Result, Ok, Err
 
 
 def check_response(
-    r: requests.Response, raw_data: bool = False
+    r: requests.Response, raw_data: bool = False, cbor_data: bool = False
 ) -> Result[dict | bytes, str]:
     """
     Check HTTP response and return Result.
 
     Args:
         r: HTTP response
-        raw_data: If True, return raw bytes instead of parsing JSON
+        raw_data: If True, return raw bytes instead of parsing
+        cbor_data: If True, parse response as CBOR instead of JSON
 
     Returns:
         Result with data (dict or bytes) or error message
@@ -32,8 +34,11 @@ def check_response(
             return Err(f"{r.status_code}: Request failed")
 
     try:
-        data = r.json()
-    except ValueError:
+        if cbor_data:
+            data = cbor2.loads(r.content)
+        else:
+            data = r.json()
+    except (ValueError, cbor2.CBORDecodeError):
         return Err(f"{r.status_code}: Invalid response format")
 
     if r.status_code in [200, 201]:
