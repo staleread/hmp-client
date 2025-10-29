@@ -29,7 +29,9 @@ def login_screen(navigator):
     async def on_select_token(widget):
         try:
             file_path = await navigator.main_window.dialog(
-                toga.OpenFileDialog(title="Select Credentials Token File")
+                toga.OpenFileDialog(
+                    title="Select Credentials Token File", file_types=["bin"]
+                )
             )
             if file_path:
                 token_path_input.value = str(file_path)
