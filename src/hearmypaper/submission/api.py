@@ -67,6 +67,15 @@ def download_submission_content(
     return result.map(lambda d: d if isinstance(d, bytes) else b"")
 
 
+def get_server_public_key(session: ApiSession) -> Result[str, str]:
+    try:
+        response = session.get("/credentials/public-key")
+        result = api_utils.check_response(response)
+        return result.map(lambda d: d["public_key"] if isinstance(d, dict) else "")
+    except Exception as e:
+        return Err(f"Network error: {e}")
+
+
 def get_upload_key(session: ApiSession) -> Result[dto.UploadKeyResponse, str]:
     try:
         response = session.get("/pdf-to-audio/upload-key")
@@ -82,7 +91,21 @@ def execute_pdf_to_audio(
     session: ApiSession, req: dto.PdfToAudioRequest
 ) -> Result[dto.PdfToAudioResponse, str]:
     try:
-        response = session.post("/pdf-to-audio/execute", json=req.model_dump())
+        payload = {
+            "encrypted_file": req.encrypted_file,
+            "encrypted_aes_key": req.encrypted_aes_key,
+            "speed": req.speed,
+        }
+        cbor_bytes = cbor2.dumps(payload)
+
+        response = session.post(
+            "/pdf-to-audio/execute",
+            headers={
+                "Content-Type": "application/cbor",
+                "Content-Length": str(len(cbor_bytes)),
+            },
+            data=cbor_bytes,
+        )
         result = api_utils.check_response(response)
         return result.map(
             lambda data: TypeAdapter(dto.PdfToAudioResponse).validate_python(data)

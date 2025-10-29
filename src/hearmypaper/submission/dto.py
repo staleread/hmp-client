@@ -19,8 +19,8 @@ class UploadKeyResponse(BaseModel):
 
 
 class PdfToAudioRequest(BaseModel):
-    encrypted_file: str
-    encrypted_aes_key: str
+    encrypted_file: bytes
+    encrypted_aes_key: bytes
     speed: int = 140
 
 
