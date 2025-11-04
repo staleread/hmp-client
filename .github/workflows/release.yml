@@ -70,6 +70,7 @@ jobs:
           name: windows-package
           path: |
             dist/**
+            !dist/**/*.wixpdb
           if-no-files-found: error
 
   build-ubuntu:
