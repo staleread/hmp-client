@@ -264,49 +264,7 @@ uv run briefcase package
 
 # Build for specific platform (from any OS with Docker)
 uv run briefcase package --target ubuntu:jammy   # Ubuntu DEB
-uv run briefcase package --target arch:latest    # Arch Linux
+uv run briefcase package --target archlinux:latest    # Arch Linux
 uv run briefcase build windows                   # Windows (on Windows runner)
 uv run briefcase build macOS                     # macOS (on macOS runner)
-```
-
-### Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/your-feature`)
-3. Make your changes and run tests
-4. Commit with clear messages
-5. Push and create a Pull Request
-
-For detailed contribution guidelines, see [CONTRIBUTING.md](CONTRIBUTING.md)
-
----
-
-**Version**: 1.0.4 | **Last Updated**: 2025-11-04
-```
-
-> [!NOTE]
-> When running for the first time (or whenever the dependencies change)
-> consider using `briefcase dev -r` to pack the required dependencies
-
----
-
-## 📦 Building the App
-
-BeeWare can package the app for multiple platforms:
-
-* **Windows / macOS / Linux** (desktop)
-* **iOS / Android** (mobile)
-
-### Build & run a packaged app
-
-```bash
-briefcase create
-briefcase build
-briefcase run
-```
-
-### Make a distributable installer
-
-```bash
-briefcase package
 ```
