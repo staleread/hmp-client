@@ -1,0 +1,32 @@
+name: CI (mypy + ruff)
+
+on:
+  push:
+    branches:
+      - "**"
+
+permissions:
+  contents: read
+
+jobs:
+  lint-and-typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+          enable-cache: true
+
+      - name: Install deps with uv
+        run: |
+          uv sync --frozen --dev --no-install-project
+
+      - name: Ruff (lint)
+        run: uv run ruff check .
+
+      - name: Mypy (type-check)
+        run: uv run mypy .

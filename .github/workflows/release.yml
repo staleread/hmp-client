@@ -1,0 +1,179 @@
+name: Release (Briefcase packaging)
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify-tag-on-main:
+    runs-on: ubuntu-latest
+    outputs:
+      is_on_main: ${{ steps.check.outputs.is_on_main }}
+    steps:
+      - name: Checkout with full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify tag points to a commit contained in main
+        id: check
+        run: |
+          if git branch --remotes --contains "${GITHUB_SHA}" | grep -E 'origin/main\b'; then
+            echo "is_on_main=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Tag is not on main; exiting."
+            echo "is_on_main=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  build-windows:
+    if: needs.verify-tag-on-main.outputs.is_on_main == 'true'
+    needs: verify-tag-on-main
+    runs-on: windows-latest
+    env:
+      BASE_URL: ${{ vars.BASE_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+          enable-cache: true
+
+      - name: Install WiX Toolset (for MSI)
+        shell: powershell
+        run: |
+          choco install wixtoolset -y
+
+      - name: Install deps with uv
+        shell: bash
+        run: |
+          uv sync --frozen --no-install-project
+
+      - name: Inject config.toml (replace placeholder)
+        shell: pwsh
+        run: |
+          $src = ".github/templates/config.toml"
+          $dst = "src/hearmypaper/resources/config.toml"
+          (Get-Content $src) -replace '\{\{BASE_URL\}\}', $env:BASE_URL | Set-Content $dst -Encoding UTF8
+
+      - name: Build and package (Windows)
+        shell: bash
+        run: |
+          uv run briefcase build windows
+          uv run briefcase package windows
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-package
+          path: |
+            dist/**
+          if-no-files-found: error
+
+  build-ubuntu:
+    if: needs.verify-tag-on-main.outputs.is_on_main == 'true'
+    needs: verify-tag-on-main
+    runs-on: ubuntu-latest
+    env:
+      BASE_URL: ${{ vars.BASE_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+          enable-cache: true
+
+      - name: Install deps with uv
+        run: |
+          uv sync --frozen --no-install-project
+
+      - name: Inject config.toml (replace placeholder)
+        run: |
+          src=".github/templates/config.toml"
+          dst="src/hearmypaper/resources/config.toml"
+          sed "s|{{BASE_URL}}|${BASE_URL}|g" "$src" > "$dst"
+
+      - name: Package Ubuntu 22.04 (DEB via Docker)
+        run: |
+          uv run briefcase package --target ubuntu:jammy
+
+      - name: Upload Ubuntu artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ubuntu-deb
+          path: |
+            dist/**
+          if-no-files-found: error
+
+  build-arch:
+    if: needs.verify-tag-on-main.outputs.is_on_main == 'true'
+    needs: verify-tag-on-main
+    runs-on: ubuntu-latest
+    env:
+      BASE_URL: ${{ vars.BASE_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+          enable-cache: true
+
+      - name: Install deps with uv
+        run: |
+          uv sync --frozen --no-install-project
+
+      - name: Inject config.toml (replace placeholder)
+        run: |
+          src=".github/templates/config.toml"
+          dst="src/hearmypaper/resources/config.toml"
+          sed "s|{{BASE_URL}}|${BASE_URL}|g" "$src" > "$dst"
+
+      - name: Package Arch Linux (via Docker)
+        run: |
+          # Confirm the exact target string in Briefcase docs for Arch Linux.
+          # Example (if supported): arch:latest
+          uv run briefcase package --target arch:latest
+
+      - name: Upload Arch artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: arch-package
+          path: |
+            dist/**
+          if-no-files-found: error
+
+  create-release:
+    if: needs.verify-tag-on-main.outputs.is_on_main == 'true'
+    needs: [build-windows, build-ubuntu, build-arch]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create GitHub Release and upload assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          files: |
+            artifacts/**/*
