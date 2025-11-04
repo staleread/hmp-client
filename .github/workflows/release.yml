@@ -26,7 +26,9 @@ jobs:
       - name: Verify tag points to a commit contained in main
         id: check
         run: |
-          if git branch --remotes --contains "${GITHUB_SHA}" | grep -E 'origin/main\b'; then
+          # Dereference tag to get the actual commit (handles annotated tags)
+          COMMIT_SHA=$(git rev-list -n 1 "${GITHUB_REF_NAME}")
+          if git branch --remotes --contains "${COMMIT_SHA}" | grep -E 'origin/main\b'; then
             echo "is_on_main=true" >> "$GITHUB_OUTPUT"
           else
             echo "Tag is not on main; exiting."
