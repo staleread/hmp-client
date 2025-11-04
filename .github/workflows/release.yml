@@ -2,8 +2,8 @@ name: Release (Briefcase packaging)
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - release
 
 permissions:
   contents: write
@@ -13,37 +13,27 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  verify-tag-on-main:
-    runs-on: ubuntu-latest
-    outputs:
-      is_on_main: ${{ steps.check.outputs.is_on_main }}
-    steps:
-      - name: Checkout with full history
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Verify tag points to a commit contained in main
-        id: check
-        run: |
-          # Dereference tag to get the actual commit (handles annotated tags)
-          COMMIT_SHA=$(git rev-list -n 1 "${GITHUB_REF_NAME}")
-          if git branch --remotes --contains "${COMMIT_SHA}" | grep -E 'origin/main\b'; then
-            echo "is_on_main=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "Tag is not on main; exiting."
-            echo "is_on_main=false" >> "$GITHUB_OUTPUT"
-          fi
-
   build-windows:
-    if: needs.verify-tag-on-main.outputs.is_on_main == 'true'
-    needs: verify-tag-on-main
     runs-on: windows-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     env:
       BASE_URL: ${{ vars.BASE_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Extract version from pyproject.toml
+        id: version
+        run: |
+          $content = Get-Content pyproject.toml -Raw
+          if ($content -match 'version\s*=\s*"([^"]+)"') {
+            $version = $matches[1]
+            echo "version=$version" >> $env:GITHUB_OUTPUT
+            echo "Version: $version"
+          } else {
+            exit 1
+          }
 
       - name: Setup uv
         uses: astral-sh/setup-uv@v5
@@ -83,8 +73,6 @@ jobs:
           if-no-files-found: error
 
   build-ubuntu:
-    if: needs.verify-tag-on-main.outputs.is_on_main == 'true'
-    needs: verify-tag-on-main
     runs-on: ubuntu-latest
     env:
       BASE_URL: ${{ vars.BASE_URL }}
@@ -121,8 +109,6 @@ jobs:
           if-no-files-found: error
 
   build-arch:
-    if: needs.verify-tag-on-main.outputs.is_on_main == 'true'
-    needs: verify-tag-on-main
     runs-on: ubuntu-latest
     env:
       BASE_URL: ${{ vars.BASE_URL }}
@@ -148,8 +134,6 @@ jobs:
 
       - name: Package Arch Linux (via Docker)
         run: |
-          # Confirm the exact target string in Briefcase docs for Arch Linux.
-          # Example (if supported): arch:latest
           uv run briefcase package --target arch:latest
 
       - name: Upload Arch artifact
@@ -161,7 +145,6 @@ jobs:
           if-no-files-found: error
 
   create-release:
-    if: needs.verify-tag-on-main.outputs.is_on_main == 'true'
     needs: [build-windows, build-ubuntu, build-arch]
     runs-on: ubuntu-latest
     steps:
@@ -173,9 +156,10 @@ jobs:
       - name: Create GitHub Release and upload assets
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: Release ${{ github.ref_name }}
+          tag_name: v${{ needs.build-windows.outputs.version }}
+          name: Release v${{ needs.build-windows.outputs.version }}
           draft: false
           prerelease: false
           files: |
             artifacts/**/*
+
