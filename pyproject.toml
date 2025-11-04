@@ -1,7 +1,7 @@
 [project]
 name = "hearmypaper-client"
 description = "Secure your course project, and only let the instructor listen!"
-version = "1.0.2"
+version = "1.0.3"
 requires-python = ">= 3.13"
 authors = [
   {name = "Mykola Ratushniak", email = "nicolas.ratushniak@gmail.com"},
