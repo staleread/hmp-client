@@ -134,7 +134,7 @@ jobs:
 
       - name: Package Arch Linux (via Docker)
         run: |
-          uv run briefcase package --target arch:latest
+          uv run briefcase package --target archlinux:latest
 
       - name: Upload Arch artifact
         uses: actions/upload-artifact@v4
