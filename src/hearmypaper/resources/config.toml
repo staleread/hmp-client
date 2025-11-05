@@ -1,3 +1,2 @@
 [api]
-# Base URL for the HearMyPaper API server
 base_url = "http://localhost:8000"
